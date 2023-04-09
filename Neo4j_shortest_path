@@ -1,0 +1,21 @@
+##################################################################################################################################
+#Cypher-запрос для вычисления путей между точками А и I с указанием расстояния и длины пути, 
+т.е. количества вершин, которые нужно обойти – за это отвечает функция length()
+
+MATCH (from:Location { name:"A" }), (to:Location { name: "I"}) , path = (from)-[:distance*]->(to) 
+RETURN path AS shortestPath,
+length(path), 
+reduce(km = 0, r in relationships(path) | km+r.km) AS totalDistance
+
+
+##################################################################################################################################
+#Вычисление времени прохождении путей с сортировкой по полям. 
+#А поскольку нас интересует кратчайший путь, добавим агрегатную функцию вычисления минимума от времени и расстояния. 
+#Чтобы исключить дублирование путей из-за разных отношений между некоторыми вершинами графа, добавим функцию дедубликации узлов пути distinct nodes(path).
+
+MATCH (from:Location { name:"A" }), (to:Location { name: "I"}) , path = (from)-[*]->(to) 
+RETURN distinct nodes(path) AS shortestPath, 
+length(path),  
+min(reduce(km = 0, r in relationships(path) | km+r.km)) AS totalDistance,   
+min(reduce(time = 0, r in relationships(path) | time+r.time)) AS totalTime   
+ORDER BY length(path), totalTime, totalDistance
