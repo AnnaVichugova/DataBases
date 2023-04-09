@@ -1,0 +1,49 @@
+#Показать продукты, которые покупают и в каких количествах
+SELECT name, price, order_product.quantity
+FROM product 
+JOIN order_product 
+ON product.id = order_product.product
+ORDER BY order_product.quantity
+
+
+#Показать какие покупатели, с каким статусом и когда сделали ТОП-3 самых дорогих заказа, которые уже приняты в работу, но еще не доставлены
+SELECT customer.name AS Client, customer_states.name AS Client_Status, public.order.sum AS Zakaz_SUMM, 
+public.order.date AS Zakaz_DAY, order_states.name AS Zakaz_State
+FROM public.order
+JOIN customer 
+ON customer.id=public.order.customer
+JOIN customer_states 
+ON customer_states.id=customer.state
+JOIN order_states 
+ON order_states.id=public.order.state
+WHERE (public.order.state BETWEEN 2 and 5)
+ORDER BY public.order.sum DESC
+LIMIT 3
+
+
+#Сколько заказов в каждом статусе? Отфильтровать их по увеличению статуса 
+SELECT order_states.name, COUNT(*)
+FROM public.order
+JOIN order_states 
+ON order_states.id=public.order.state
+GROUP BY order_states.name
+ORDER BY order_states.name DESC
+
+
+#Какие 5 дат оказались самыми удачными по продажам? Вычислить сумму заказов
+SELECT SUM(sum) AS SUMMA, 
+to_char(public.order.date, 'DD-MM-YYYY') AS Zakaz_DAY
+FROM public.order
+GROUP BY date
+ORDER BY SUMMA DESC
+LIMIT 5
+
+
+#Какие 5 дат за последние 10 дней оказались самыми удачными по продажам? 
+SELECT SUM(sum) AS SUMMA, 
+to_char(public.order.date, 'DD-MM-YYYY') AS Zakaz_DAY
+FROM public.order
+GROUP BY date
+HAVING date BETWEEN (CURRENT_DATE-10) AND (CURRENT_DATE)
+ORDER BY SUMMA DESC
+LIMIT 5
