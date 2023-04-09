@@ -1,0 +1,58 @@
+#Направленный взвешенный граф, с вершинами буквами, а ребра промаркируем несколькими отношениями, задав расстояние в километрах (distance) 
+#и время прохождения этого расстояния пешком (On_Foot) или на автомобиле (By_Car). 
+#Не все отношения, заданные в километрах, могут быть пройдены обоими способами передвижения. 
+
+CREATE (A:Location { name: "A" })
+CREATE (B:Location { name: "B" })
+CREATE (C:Location { name: "C" })
+CREATE (D:Location { name: "D" })
+CREATE (E:Location { name: "E" })
+CREATE (F:Location { name: "F" })
+CREATE (G:Location { name: "G" })
+CREATE (H:Location { name: "H" })
+CREATE (I:Location { name: "I" })
+
+CREATE
+    (A)-[:distance { km: 5 }]->(B),
+    (B)-[:distance { km: 10 }]->(C),
+    (C)-[:distance { km: 12 }]->(I),
+    (A)-[:distance { km: 35 }]->(D),
+    (D)-[:distance { km: 18 }]->(E),
+    (D)-[:distance { km: 7 }]->(B),
+    (E)-[:distance { km: 10 }]->(I),
+    (A)-[:distance { km: 5 }]->(F),
+    (F)-[:distance { km: 3 }]->(G),
+    (F)-[:distance { km: 6 }]->(E),
+    (G)-[:distance { km: 20 }]->(H),
+    (H)-[:distance { km: 30 }]->(I),
+    
+    (A)-[:On_Foot { time: 60 }]->(B),
+    (B)-[:On_Foot { time: 120 }]->(C),
+    (C)-[:On_Foot { time: 170 }]->(I),
+    (C)-[:By_Car { time: 70 }]->(I),
+    (A)-[:By_Car { time: 35 }]->(D),
+    (D)-[:On_Foot { time: 120 }]->(E),
+    (D)-[:On_Foot { time: 90 }]->(B),
+    (D)-[:By_Car { time: 25 }]->(B),
+    (D)-[:By_Car { time: 35 }]->(E),
+    (E)-[:By_Car { time: 15 }]->(I),
+    (A)-[:By_Car { time: 2 }]->(F),
+    (F)-[:On_Foot { time: 60 }]->(G),
+    (F)-[:On_Foot { time: 70 }]->(E),
+    (F)-[:By_Car { time: 10 }]->(E),
+    (G)-[:By_Car { time: 30 }]->(H),
+    (G)-[:On_Foot { time: 240 }]->(H),
+    (H)-[:By_Car { time: 40 }]->(I)
+
+
+
+
+
+###############################################################################################
+#Набор различных взаимоотношений между 9 людьми в разных местах
+
+create (Sasha:Sales {name: 'Саша'}), (Masha:Sales:Home3 {name: 'Маша'}), (Petya:Projects {name: 'Петя'}), 
+(Lesha:Home1 {name:'Леша'}), (Kira:YogaClub {name: 'Кира'}), (Ira:Sales {name: 'Ира'}), (Serg:Home2:SkiClub {name: 'Сережа'}), 
+(Katya:Home2 {name: 'Катя'}), (Kostya:ChessClub:Home3 {name: 'Костя'}), (Sasha)-[:deals]->(Masha), (Sasha)-[:deals]->(Petya), 
+(Sasha)-[:family]->(Lesha), (Sasha)-[:friend]->(Kira), (Sasha)-[:deals]->(Ira), (Serg)-[:loves]->(Katya), (Serg)-[:friend]->(Kostya), 
+(Serg)-[:friend]->(Petya), (Masha)-[:loves]->(Kostya), (Masha)-[:friend]->(Ira), (Kira)-[:deals]->(Lesha)
