@@ -1,0 +1,88 @@
+#Получить в 1 запросе следующие данные:
+#сумму заказов, сделанных в определенный период
+#данные по тем клиентам, которые сделали эти заказы
+#cведения о доставке
+#товары входящие в состав заказа, их количество 
+#сведения о поставщике этих товаров
+
+query GetStatistics {
+  order_aggregate(where: {date: {_gt: "2023-01-01", _lt: "2023-03-31"}}) {
+    aggregate {
+      sum {
+        sum
+      }
+    }
+    nodes {
+      customerByCustomer {
+        orders {
+          deliveryByDelivery {
+            date
+            address
+            price
+          }
+          order_products {
+            productByProduct {
+              name
+              price
+              providerByProvider {
+                address
+                name
+              }
+            }
+            quantity
+          }
+          sum
+          order_state {
+            name
+          }
+        }
+        name
+      }
+    }
+  }
+}
+
+#################################################################################################################################################################
+
+#Добавить 1 заказ (простой mutation)
+mutation AddOrder {
+  insert_order_one(object: {date: "2023-04-15", sum: "4378", id: 1561, products: 2, state: 2, delivery: 1, customer: 1) {
+    id
+    date
+    customer
+    products
+    sum
+    state
+    delivery
+  }
+}
+
+
+#################################################################################################################################################################
+
+#Добавить 1 заказ и 1 клиента – в одном запросе (сложный mutation)
+mutation AddOrder {
+  insert_order_one(object: {date: "2023-04-25", sum: "127.24", id: 17, products: 3, state: 1, delivery: 1, customerByCustomer: {data: {email: "win@mail.com", id: 168, name: "Винни", phone: "987654321", state: 1}}}) {
+    id
+    date
+    customer
+    products
+    sum
+    state
+    delivery
+  }
+}
+
+
+#################################################################################################################################################################
+
+#Удалить 1 клиента (простой mutation)
+
+mutation DeleteCustomer {
+  delete_customer(where: {name: {_eq: "Анна"}, id: {_eq: 140}}) {
+    affected_rows
+  }
+}
+
+
+#################################################################################################################################################################
