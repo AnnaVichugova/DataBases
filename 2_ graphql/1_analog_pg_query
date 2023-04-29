@@ -1,0 +1,38 @@
+# -- ######################
+# -- Получить в 1 запросе следующие данные:
+# -- сумму заказов, сделанных в определенный период c 2023-04-25 по 2023-05-01
+# -- данные по тем клиентам, которые сделали эти заказы (name и email)
+# -- Сведения о доставке (date и price)
+# -- товары входящие в состав заказа, их количество (name из product, quantity из order_product)
+# -- сведения о поставщике этих товаров (name и phone)
+# -- ######################
+
+query GetStatistics {
+  base_case_order_aggregate(where: {date: {_gt: "2023-04-25", _lt: "2023-05-01"}}) {
+    aggregate {
+      sum {
+        sum
+      }
+    }
+    nodes {
+      customerByCustomer {
+        name
+        email
+      }
+      deliveryByDelivery {
+        date
+        price
+      }
+      order_products {
+        quantity
+        productByProduct {
+          name
+          providerByProvider {
+            name
+            phone
+          }
+        }
+      }
+    }
+  }
+}
