@@ -1,0 +1,7 @@
+HSET bread 'Worm Stores A.G' 27 'Curriculum Holdings Company' 86 'Producing Stores ' 71 'Meta Corp' 86 'Lots Stores ' 77 'Smilies Corp' 93 'Cherry Corp' 42 'Remaining Energy ' 60 'Journalism Holdings Pte. Ltd' 20 'Commodities ' 80
+
+HSET apple 'Worm Stores A.G' 124 'Curriculum Holdings Company' 0 'Producing Stores ' 1710 'Meta Corp' 1286 'Lots Stores ' 477 'Smilies Corp' 3 'Journalism Holdings Pte. Ltd' 24 'Commodities ' 180
+
+HSET milk 'Worm Stores A.G' 27 'Curriculum Holdings Company' 86 'Producing Stores ' 71 'Meta Corp' 86
+
+HSET cacao 'OOO Alisa' 71
