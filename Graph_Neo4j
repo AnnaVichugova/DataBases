@@ -1,16 +1,16 @@
-#Направленный взвешенный граф, с вершинами буквами, а ребра промаркируем несколькими отношениями, задав расстояние в километрах (distance) 
+#Направленный взвешенный граф, с вершинами буквами (Store - это склад, а Shop - это магазин). Ребра промаркируем несколькими отношениями, задав расстояние в километрах (distance) 
 #и время прохождения этого расстояния пешком (On_Foot) или на автомобиле (By_Car). 
 #Не все отношения, заданные в километрах, могут быть пройдены обоими способами передвижения. 
 
-CREATE (A:Location { name: "A" })
-CREATE (B:Location { name: "B" })
-CREATE (C:Location { name: "C" })
-CREATE (D:Location { name: "D" })
-CREATE (E:Location { name: "E" })
-CREATE (F:Location { name: "F" })
-CREATE (G:Location { name: "G" })
-CREATE (H:Location { name: "H" })
-CREATE (I:Location { name: "I" })
+CREATE (A:Store { name: "A" })
+CREATE (B:Shop { name: "B" })
+CREATE (C:Store { name: "C" })
+CREATE (D:Store { name: "D" })
+CREATE (E:Shop { name: "E" })
+CREATE (F:Store { name: "F" })
+CREATE (G:Store { name: "G" })
+CREATE (H:Shop { name: "H" })
+CREATE (I:Shop { name: "I" })
 
 CREATE
     (A)-[:distance { km: 5 }]->(B),
@@ -43,8 +43,6 @@ CREATE
     (G)-[:By_Car { time: 30 }]->(H),
     (G)-[:On_Foot { time: 240 }]->(H),
     (H)-[:By_Car { time: 40 }]->(I)
-
-
 
 
 
