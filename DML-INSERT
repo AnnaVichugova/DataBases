@@ -1,0 +1,72 @@
+##########################ячейка №1 в Google Colab - установка библиотек и импорт модулей ##############################################
+#установка библиотек
+!pip install Faker
+
+#импорт модулей
+import random
+from faker import Faker
+from google.colab import files
+from faker.providers.address.ru_RU import Provider
+
+##########################ячейка №2 в Google Colab - заполнение таблицы-справочника (без внешних ключей) ##############################################
+# задаем названиие таблицы
+table_name = 'customer_states'
+
+# задаем столбцы таблицы
+column_names = ('id', 'name')
+
+#создаем список данных - справочник значений
+states = ['бронзовый', 'серебряный', 'золотой', 'VIP']
+
+# задаем количество строк таблицы, которое хотим заполнить - для таблицы-справочника это количество значений списка данных
+k = len(states)
+
+# генерация и запись DML-скрипта в файл
+with open('output.sql', 'w') as f: #открытие файла для записи
+    # формируем строку с названиями столбцов
+    columns_str = ', '.join(f'"{column}"' for column in column_names)
+    for i in range(k):
+        # генерируем значения для каждого столбца
+        values = [str(i+1), random.choice(states)]
+        # формируем строку со значениями
+        values_str = ', '.join(f"'{value}'" for value in values)
+        # формируем и записываем DML-запрос в файл
+        insert_query = f'INSERT INTO "{table_name}" ({columns_str}) VALUES ({values_str});\n'
+        print(insert_query) #вывод на консоль - для проверки и отладки
+        f.write(insert_query) #запись в файл
+    f.close() #закрытие файла
+
+# Скачиваем файл на локальную машину
+files.download('output.sql')
+
+##########################ячейка №3 в Google Colab - заполнение таблицы фактов (с внешними ключами) ##############################################
+# Создание объекта Faker с локализацией для России
+fake = Faker('ru_RU')
+fake.add_provider(Provider)
+
+# задаем названиие таблицы
+table_name = 'customer'
+
+# задаем столбцы таблицы
+column_names = ('id', 'name', 'email', 'phone', 'state')
+
+# задаем количество строк таблицы, которое хотим заполнить
+k = 100
+
+# генерация и запись DML-скрипта в файл
+with open('output.sql', 'w') as f: #открытие файла для записи
+    # формируем строку с названиями столбцов
+    columns_str = ', '.join(f'"{column}"' for column in column_names)
+    for i in range(k):
+        # генерируем значения для каждого столбца
+        values = [str(i+1), fake.name(), fake.email(), fake.phone_number(), str(fake.random_int(min=1, max=4))]
+        # формируем строку со значениями
+        values_str = ', '.join(f"'{value}'" for value in values)
+        # формируем и записываем DML-запрос в файл
+        insert_query = f'INSERT INTO "{table_name}" ({columns_str}) VALUES ({values_str});\n'
+        print(insert_query) #вывод на консоль - для проверки и отладки
+        f.write(insert_query) #запись в файл
+    f.close() #закрытие файла
+
+# Скачиваем файл на локальную машину
+files.download('output.sql')
