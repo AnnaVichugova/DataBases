@@ -8,7 +8,7 @@ from google.colab import files
 
 from faker.providers.address.ru_RU import Provider
 
-#############################ячейка №2 в Google Colab - скрипт наполнения случайными данными таблицы с датой и адресом
+#############################ячейка №2 в Google Colab - скрипт наполнения случайными данными таблицы с ФИО клиентов, телефонами, емейлом и статусом (внешний ключ)
 # Создание объекта Faker с локализацией для России
 fake = Faker('ru_RU')
 fake.add_provider(Provider)
