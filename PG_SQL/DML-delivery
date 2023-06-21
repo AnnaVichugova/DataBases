@@ -42,7 +42,7 @@ with open(filename, 'w') as f: #открытие файла для записи
         #генерируем случайное значение адреса
         address=f"'{fake.address()}'" 
         #генерируем для суммы денег за доставку случайное вещественное число от 0 до 1000 с двумя знаками после запятой  
-        price=round(fake.pyfloat(right_digits=2, min_value=0, max_value=10000), 2) 
+        price=round(fake.pyfloat(right_digits=2, min_value=0, max_value=1000), 2) 
         
         # формируем список со значениями
         values = [i+1, date, address, price]
