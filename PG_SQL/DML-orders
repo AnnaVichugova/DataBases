@@ -1,0 +1,58 @@
+#############################ячейка №1 в Google Colab - установка библиотек и импорт модулей######################## 
+!pip install Faker
+
+import random
+import datetime
+from faker import Faker
+from google.colab import files
+
+from faker.providers.address.ru_RU import Provider
+
+#############################ячейка №2 в Google Colab - скрипт наполнения случайными данными таблицы фактов с несколькими внешними ключами
+
+# Создание объекта Faker с локализацией для России
+fake = Faker('ru_RU')
+fake.add_provider(Provider)
+
+# задаем названиие таблицы
+table_name = 'orders'
+
+# задаем столбцы таблицы
+column_names = ('id', 'customer', 'state', 'delivery', 'sum', 'date')
+
+# задаем количество строк таблицы, которое хотим заполнить
+k = 100
+
+# генерация и запись DML-скрипта в файл
+filename = f'{table_name}.sql' # формируем название выходного файла
+with open(filename, 'w') as f: #открытие файла для записи
+    # формируем строку с названиями столбцов
+    columns_str = ', '.join(f'"{column}"' for column in column_names)
+    for i in range(k):
+        # генерируем значения для каждого столбца
+        #для целочисленных значений используем fake.random_int(min=1, max=4), в скобках указываем диапазон от мин до макс
+        customer=fake.random_int(min=1, max=100) #генерируем случайное значение внешнего ключа
+        state=fake.random_int(min=1, max=5) #генерируем случайное значение внешнего ключа
+        sum=round(fake.pyfloat(right_digits=2, min_value=0, max_value=10000), 2) #генерируем для суммы денег за заказ случайное вещественное число от 0 до 10000 с двумя знаками после запятой  
+        delivery=fake.random_int(min=1, max=5) #генерируем случайное значение внешнего ключа
+        
+        # генерируем случайную дату в диапазоне
+        start_date = datetime.date(2023, 1, 1)
+        end_date = datetime.date(2023, 12, 31)
+        random_date = start_date + datetime.timedelta(days=random.randint(0, (end_date - start_date).days))
+        # преобразуем дату в строку в формате "год-месяц-день"
+        #для строковых значений обязательно f"'{}'"
+        date = f"'{random_date.strftime('%Y-%m-%d')}'"
+
+        # формируем список со значениями
+        values = [i+1, customer, state, delivery, sum, date]
+        # формируем строку со значениями
+        values_str = ', '.join(str(value) for value in values)
+        # формируем и записываем DML-запрос в файл
+        insert_query = f'INSERT INTO "{table_name}" ({columns_str}) VALUES ({values_str});\n'
+        print(insert_query) #вывод на консоль - для проверки и отладки
+        f.write(insert_query) #запись в файл
+    f.close() #закрытие файла
+
+# Скачиваем файл на локальную машину
+files.download(filename)
