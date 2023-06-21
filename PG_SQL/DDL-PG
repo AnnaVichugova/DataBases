@@ -16,7 +16,6 @@ ALTER TABLE
 CREATE TABLE "orders"(
     "id" INTEGER NOT NULL,
     "customer" INTEGER NOT NULL,
-    "products" INTEGER NOT NULL,
     "state" INTEGER NOT NULL,
     "delivery" INTEGER NOT NULL,
     "sum" DOUBLE PRECISION NOT NULL,
