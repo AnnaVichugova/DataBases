@@ -1,0 +1,51 @@
+#############################ячейка №1 в Google Colab - установка библиотек и импорт модулей######################## 
+!pip install Faker
+
+import random
+import datetime
+from faker import Faker
+from google.colab import files
+
+from faker.providers.address.ru_RU import Provider
+
+#############################ячейка №2 в Google Colab - скрипт наполнения случайными данными таблицы с названиями компаний, телефонами, емейлом и адресом
+#скрипт наполнения случайными данными таблицы с адресом
+
+# Создание объекта Faker с локализацией для России
+fake = Faker('ru_RU')
+fake.add_provider(Provider)
+
+# задаем названиие таблицы
+table_name = 'provider'
+
+# задаем столбцы таблицы
+column_names = ('id', 'name', 'phone','email', 'address')
+
+# задаем количество строк таблицы, которое хотим заполнить
+k = 100
+
+# генерация и запись DML-скрипта в файл
+filename = f'{table_name}.sql' # формируем название выходного файла
+with open(filename, 'w') as f: #открытие файла для записи
+    # формируем строку с названиями столбцов
+    columns_str = ', '.join(f'"{column}"' for column in column_names)
+    for i in range(k):
+      # генерируем значения для каждого столбца
+        #для строковых значений обязательно f"'{}'"
+        name=f"'{fake.unique.company()}'" #генерируем случайное уникальное имя
+        phone=f"'{fake.phone_number()}'" #генерируем случайный номер телефона
+        email=f"'{fake.email()}'" #генерируем случайный уникальный емейл
+        address=f"'{fake.address()}'" #генерируем случайное значение адреса
+        
+        # формируем список со значениями
+        values = [i+1, name, phone, email, address]
+        # формируем строку со значениями
+        values_str = ', '.join(str(value) for value in values)
+        # формируем и записываем DML-запрос в файл
+        insert_query = f'INSERT INTO "{table_name}" ({columns_str}) VALUES ({values_str});\n'
+        print(insert_query) #вывод на консоль - для проверки и отладки
+        f.write(insert_query) #запись в файл
+    f.close() #закрытие файла
+
+# Скачиваем файл на локальную машину
+files.download(filename)
