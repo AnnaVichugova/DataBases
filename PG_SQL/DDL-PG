@@ -1,12 +1,12 @@
 CREATE TABLE "order_states"(
     "id" INTEGER NOT NULL,
-    "name" CHAR(255) NOT NULL
+    "name" VARCHAR(255) NOT NULL
 );
 ALTER TABLE
     "order_states" ADD PRIMARY KEY("id");
 CREATE TABLE "product"(
     "id" INTEGER NOT NULL,
-    "name" CHAR(255) NOT NULL,
+    "name" VARCHAR(255) NOT NULL,
     "provider" INTEGER NOT NULL,
     "price" DOUBLE PRECISION NOT NULL,
     "quantity" INTEGER NOT NULL
@@ -33,15 +33,15 @@ ALTER TABLE
     "order_product" ADD PRIMARY KEY("id");
 CREATE TABLE "customer_states"(
     "id" INTEGER NOT NULL,
-    "name" CHAR(255) NOT NULL
+    "name" VARCHAR(255) NOT NULL
 );
 ALTER TABLE
     "customer_states" ADD PRIMARY KEY("id");
 CREATE TABLE "customer"(
     "id" INTEGER NOT NULL,
-    "name" CHAR(255) NOT NULL,
-    "email" CHAR(255) NOT NULL,
-    "phone" CHAR(255) NOT NULL,
+    "name" VARCHAR(255) NOT NULL,
+    "email" VARCHAR(255) NOT NULL,
+    "phone" VARCHAR(255) NOT NULL,
     "state" INTEGER NOT NULL
 );
 ALTER TABLE
@@ -56,10 +56,10 @@ ALTER TABLE
     "delivery" ADD PRIMARY KEY("id");
 CREATE TABLE "provider"(
     "id" INTEGER NOT NULL,
-    "name" CHAR(255) NOT NULL,
-    "phone" CHAR(255) NOT NULL,
-    "email" CHAR(255) NOT NULL,
-    "address" TEXT NOT NULL
+    "name" VARCHAR(255) NOT NULL,
+    "phone" VARCHAR(255) NOT NULL,
+    "email" VARCHAR(255) NOT NULL,
+    "address" VARCHAR(255) NOT NULL
 );
 ALTER TABLE
     "provider" ADD PRIMARY KEY("id");
