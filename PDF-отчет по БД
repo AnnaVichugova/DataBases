@@ -1,0 +1,222 @@
+###############################################ячейка №1 в Google Colab#############################
+#Установка библиотек
+
+#импорт пакетов
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+import datetime
+import pandas as pd
+import os
+import psycopg2
+import traceback
+import threading
+from google.colab import files
+
+#############################################
+global connection_string #глобальная переменная строка подключения 
+connection_string = 'postgres://username:password@v-host.neon.tech/neondb' #ваша строка подключения к БД
+
+#создание директории для сохранения отчетов
+!mkdir -p /content/reports
+
+###################################################ячейка №2 в Google Colab########################################################################
+# Функция получения помесячной выручки из БД (сумма всех заказов, сгруппированных по месяцам)
+def db_read_monthly_income_count(start, finish):
+    conn = psycopg2.connect(connection_string)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT to_char(orders.date, 'Month') AS mes, SUM(orders.sum) AS income, COUNT(orders.sum) AS quantity
+            FROM orders
+            WHERE EXTRACT(MONTH FROM orders.date) BETWEEN %s::integer AND %s::integer
+            GROUP BY mes
+            ORDER BY (MIN(orders.date))
+        """, (start, finish))
+        results = cursor.fetchall()
+        return results
+    except Exception as e:  # ловить конкретные исключения и сохранять информацию об исключении в переменную 'e'
+        traceback.print_exc()
+        return 'Ошибка при получении данных из базы данных'
+    finally:
+        cursor.close() #закрыть курсор, который выполняет запросы
+        conn.close()  #закрыть соединение с базой данных
+
+# Функция получения больше всего востребованных товаров из БД (тех товаров во всех заказах, которых купили больше 500 единиц)
+def db_read_products_statiscics_count(start, finish):
+    conn = psycopg2.connect(connection_string)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT product.name AS tovar, SUM(order_product.quantity) AS kolichestvo
+            FROM order_product
+            JOIN product on product.id=order_product.product
+            JOIN orders on orders.id=order_product.order
+            WHERE (EXTRACT(MONTH FROM orders.date) BETWEEN 1 AND 6)
+            GROUP BY tovar
+            HAVING SUM(order_product.quantity)>500
+            ORDER BY kolichestvo
+        """, (start, finish))
+        results = cursor.fetchall()
+        return results
+    except Exception as e:  # ловить конкретные исключения и сохранять информацию об исключении в переменную 'e'
+        traceback.print_exc()
+        return 'Ошибка при получении данных из базы данных'
+    finally:
+        cursor.close() #закрыть курсор, который выполняет запросы
+        conn.close()  #закрыть соединение с базой данных
+
+# Функция получения распределения данных по сумме заказа
+def db_read_orders_stat(start, finish):
+    conn = psycopg2.connect(connection_string)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT orders.sum AS summa
+            FROM orders
+            WHERE EXTRACT(MONTH FROM orders.date) BETWEEN %s::integer AND %s::integer
+        """, (start, finish))
+        results = cursor.fetchall()
+        return results
+    except Exception as e:  # ловить конкретные исключения и сохранять информацию об исключении в переменную 'e'
+        traceback.print_exc()
+        return 'Ошибка при получении данных из базы данных'
+    finally:
+        cursor.close() #закрыть курсор, который выполняет запросы
+        conn.close()  #закрыть соединение с базой данных
+
+###############################################ячейка №3 в Google Colab############################################################################
+start = 1 #месяц начала сбора статистики
+finish = 12 #месяц окончания сбора статистики
+
+# Создание DataFrame  помесячной выручки и вывод его на экран
+df = pd.DataFrame(db_read_monthly_income_count(start, finish), columns=['МЕСЯЦ', 'ДОХОД', 'КОЛИЧЕСТВО ЗАКАЗОВ'])
+
+# Создание DataFrame самых востребованных товаров из БД и вывод его на экран
+df2 = pd.DataFrame(db_read_products_statiscics_count(start, finish), columns=['ТОВАР', 'КОЛИЧЕСТВО'])
+
+# Создание DataFrame суммы заказа и вывод его на экран
+df3 = pd.DataFrame(db_read_orders_stat(start, finish), columns=['summa'])
+
+# Получаем текущую дату
+current_date = datetime.datetime.now()
+
+# Форматируем дату в строку (например, '2023-03-15')
+date_str = current_date.strftime('%Y-%m-%d')
+
+# Создание PDF-файла для сохранения графиков и таблиц. В название файла включаем текущую дату
+filename = '/content/reports/report_' + date_str + '.pdf'
+
+# Запись данных в PDF-файл
+with PdfPages(filename) as pdf:
+    # Рассчитаем статистику по суммам заказа
+    kolvo=len(df3['summa']) #количество наблюдений
+    df_max = df3['summa'].max() #максимум
+    df_min=df3['summa'].min() #минимум
+    df_mean = df3['summa'].mean() #среднее значение
+    df_sum=df3['summa'].sum() #сумма
+
+    # упаковываем статистику в датафрейм для отображения в таблице
+    df_stats = pd.DataFrame({
+        'Показатель': ['ВСЕГО заказов', 'Максимальный чек', 'Минимальный чек', 'Среднее значение', 'ИТОГО общая сумма дохода'],
+        'Значение': [kolvo, df_max, df_min, df_mean, df_sum]
+    })
+
+    # Создание фигуры и осей для таблицы
+    fig_table, ax_table = plt.subplots(figsize=(8, 3))  # Выберите подходящий размер фигуры
+
+    # Задание заголовка
+    ax_table.set_title(f"Статистика по сумме заказов, с {start}-го месяца по {finish}-й месяц")
+
+    # Задание содержимого таблицы со статистикой
+    ax_table.axis('tight') #задаем границы области для таблицы так, чтобы они плотно обрамляли содержимое
+    ax_table.axis('off') #выключаем отображение осей для таблицы (нет границ и делений)
+    table = ax_table.table(cellText=df_stats.values, colLabels=df_stats.columns, loc='center') #задаем содержимое ячеек таблицы, заголовки столбцов и расположение таблицы
+    table.set_fontsize(10) #устанавливаем размер шрифта для текста в таблице вручную
+    table.scale(1.2, 1.2)  # Можно изменить масштаб таблицы для лучшего отображения
+
+    # Сохранение в pdf и закрытие страницы в файле, чтобы освободить память, связанную с этим объектом Figure в Matplotlib
+    pdf.savefig(fig_table)
+    plt.close(fig_table)
+
+# подробности по месячной выручке
+    # Создание фигуры и осей для таблицы
+    fig_table, ax_table = plt.subplots(figsize=(8, 6))  # Выберите подходящий размер фигуры
+
+    # Задание заголовка
+    ax_table.set_title(f"Доходы по месяцам, с {start}-го месяца по {finish}-й месяц")
+
+    # Задание содержимого таблицы со статистикой
+    ax_table.axis('tight') # задаем границы области для таблицы так, чтобы они плотно обрамляли содержимое
+    ax_table.axis('off') # выключаем отображение осей для таблицы (нет границ и делений)
+    table = ax_table.table(cellText=df.values, colLabels=df.columns, loc='center') #задаем содержимое ячеек таблицы, заголовки столбцов и расположение таблицы
+    table.set_fontsize(10) # устанавливаем размер шрифта для текста в таблице вручную
+    table.scale(1.2, 1.2)  # Можно изменить масштаб таблицы для лучшего отображения
+
+    # Сохранение в pdf и закрытие страницы в файле, чтобы освободить память, связанную с этим объектом Figure в Matplotlib
+    pdf.savefig(fig_table)
+    plt.close(fig_table)
+
+    # Создание фигуры и осей для гистограммы
+    fig_hist, ax_hist = plt.subplots(figsize=(14, 6))  # Выберите подходящий размер фигуры
+
+    # Установим метки на оси X с названиями месяцев
+    ax_hist.set_xticks(range(1+len(df['МЕСЯЦ'])))
+
+    # Строим столбики гистограммы
+    ax_hist.bar(df['МЕСЯЦ'], df['ДОХОД'], width=0.4, edgecolor="white", label='доход за месяц', linewidth=0.7)
+
+    # Рисуем число заказов
+    ax_hist.plot(df['МЕСЯЦ'], 5000*df['КОЛИЧЕСТВО ЗАКАЗОВ'], 'r', label='количество заказов (в масштабе x5000)', linewidth=2.0)
+
+    # Задание содержимого таблицы со статистикой
+    ax_hist.set_title(f"Доход от заказов и их количество по месяцам, с {start}-го месяца по {finish}-й месяц")
+
+    #Задание осей гистограммы
+    ax_hist.set_xlabel('Месяц')
+    ax_hist.set_ylabel('Доход')
+
+    # Добавляем легенду на график
+    ax_hist.legend()
+
+    #Сохранение в pdf и закрытие страницы в файле, чтобы освободить память, связанную с этим объектом Figure в Matplotlib
+    pdf.savefig(fig_hist)
+    plt.close(fig_hist)
+
+    # Создание фигуры и осей для таблицы
+    fig_table, ax_table = plt.subplots(figsize=(8, 6))  # Выберите подходящий размер фигуры
+
+
+# для самых часто покупаемых товаров
+    #Задание заголовка
+    ax_table.set_title(f"Самые часто покупаемые товары, с {start}-го месяца по {finish}-й месяц")
+    
+    # Задание содержимого таблицы со статистикой
+    ax_table.axis('tight') #задаем границы области для таблицы так, чтобы они плотно обрамляли содержимое
+    ax_table.axis('off') #выключаем отображение осей для таблицы (нет границ и делений)
+    table = ax_table.table(cellText=df2.values, colLabels=df2.columns, loc='center') #задаем содержимое ячеек таблицы, заголовки столбцов и расположение таблицы
+    #table.auto_set_font_size(True)
+    table.set_fontsize(10) #устанавливаем размер шрифта для текста в таблице вручную
+    table.scale(1.2, 1.2)  # Можно изменить масштаб таблицы для лучшего отображения
+
+    #Сохранение в pdf и закрытие страницы в файле, чтобы освободить память, связанную с этим объектом Figure в Matplotlib
+    pdf.savefig(fig_table)
+    plt.close(fig_table)
+
+    # Создание фигуры и осей для круговой диаграммы
+    fig_circle, ax_circle = plt.subplots(figsize=(10, 8)) # 10 - ширина, 8 - высота фигуры в дюймах
+
+    #Задание заголовка
+    ax_circle.set_title(f"Самые часто покупаемые товары по месяцам, с {start}-го месяца по {finish}-й месяц")
+
+    # Строим круговую диаграмму с отображением данных
+    ax_circle.pie(df2['КОЛИЧЕСТВО'], labels=df2['ТОВАР'], autopct='%1.1f%%', startangle=90)
+
+    # Устанавливаем соотношение сторон диаграммы как 1, чтобы круг выглядел как круг, а не эллипс
+    plt.axis('equal')
+
+    #Сохранение в pdf и закрытие страницы в файле, чтобы освободить память, связанную с этим объектом Figure в Matplotlib
+    pdf.savefig(fig_circle)
+    plt.close(fig_circle)
+
+# Скачиваем файл на локальную машину
+files.download(filename)
