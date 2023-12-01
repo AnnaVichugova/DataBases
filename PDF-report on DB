@@ -9,7 +9,6 @@ import traceback
 import threading
 from google.colab import files
 
-#############################################
 global connection_string #глобальная переменная строка подключения 
 connection_string = 'postgres://username:password@v-host.neon.tech/neondb' #ваша строка подключения к БД
 
