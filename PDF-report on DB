@@ -1,12 +1,9 @@
 ###############################################ячейка №1 в Google Colab#############################
-#Установка библиотек
-
 #импорт пакетов
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import datetime
 import pandas as pd
-import os
 import psycopg2
 import traceback
 import threading
