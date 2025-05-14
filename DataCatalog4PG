@@ -1,0 +1,266 @@
+################################ ячейка 1 в  Google Colab ################################
+# Импорт модулей и библиотек
+import traceback #для вывода информации об исключениях и записей трассировки стека
+import threading
+import pandas as pd #для датафреймов
+import os #для работы с операционной системой, файловым пространством ВМ Google Colab
+import psycopg2 #для работы с PostgreSQL
+from google.colab import userdata #для импорта секретов
+from google.colab import files  #для работы с файлами
+from datetime import date, datetime, timedelta #для работы с датой и временем
+
+################################ ячейка 2 в  Google Colab ################################
+# Строка подключения к БД
+global db_pg_connection_string
+
+connection_string = userdata.get('db_pg_connection_string') #добавить строку подключения db_pg_connection_string в секреты или явно указать здесь
+
+# Функция получения метаданных о текущей БД
+def get_db_metadata(connection_string):
+    query = """
+SELECT
+    d.datname AS database_name,
+    pg_catalog.shobj_description(d.oid, 'pg_database') AS database_comment,
+    n.nspname AS schema_name,
+    pg_catalog.obj_description(n.oid, 'pg_namespace') AS schema_comment
+FROM pg_database d
+LEFT JOIN pg_catalog.pg_namespace n ON pg_catalog.obj_description(n.oid, 'pg_namespace') IS NOT NULL
+WHERE d.datistemplate = false
+  AND d.datname <> '_aiven'
+  AND pg_catalog.obj_description(n.oid, 'pg_namespace') NOT IN (
+        'standard public schema',
+        'reserved schema for TOAST tables',
+        'system catalog schema'
+      )
+ORDER BY d.datname, n.nspname;
+    """
+
+    try:
+        with psycopg2.connect(connection_string) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                results = cursor.fetchall()
+                df_db_meta = pd.DataFrame(results, columns=[
+                    'Название БД',
+                    'Комментарий к БД',
+                    'Название схемы',
+                    'Комментарий к схеме'
+                ])
+                print(df_db_meta)
+                return df_db_meta
+    except Exception as e:
+        traceback.print_exc()
+        return pd.DataFrame()
+
+
+# Функция получения списка таблиц, колонок с типами данных, ограничениями и связями между таблицами
+def get_tables_metadata_db(connection_string):
+    query = """
+SELECT DISTINCT
+    cols.table_schema || '.' || cols.table_name AS table_full_name,
+    pg_class.relowner::regrole::text AS owner,
+    obj_description(pg_class.oid, 'pg_class') AS table_comment,
+    cols.column_name AS column_name,
+    cols.data_type AS data_type,
+    cols.column_default AS default_value,
+    (cols.is_nullable = 'NO') AS NOT_NULL,
+    col_description(pg_class.oid, cols.ordinal_position) AS column_comment,
+    tc.constraint_type AS constraint_type,
+    fk.foreign_table_schema || '.' || fk.foreign_table_name AS foreign_table_full_name,
+    fk.foreign_column_name AS foreign_column_name
+FROM information_schema.columns cols
+LEFT JOIN pg_class
+    ON pg_class.relname = cols.table_name
+    AND pg_class.relkind = 'r'
+LEFT JOIN pg_namespace nsp
+    ON nsp.oid = pg_class.relnamespace
+    AND nsp.nspname = cols.table_schema
+LEFT JOIN pg_stat_all_tables
+    ON pg_stat_all_tables.relid = pg_class.oid
+LEFT JOIN (
+    SELECT
+        tc.table_schema,
+        tc.table_name,
+        kcu.column_name,
+        tc.constraint_type
+    FROM information_schema.table_constraints tc
+    JOIN information_schema.key_column_usage kcu
+        ON tc.constraint_name = kcu.constraint_name
+        AND tc.table_schema = kcu.table_schema
+        AND tc.table_name = kcu.table_name
+    WHERE tc.constraint_type IN ('PRIMARY KEY', 'UNIQUE')
+) tc ON cols.table_schema = tc.table_schema
+     AND cols.table_name = tc.table_name
+     AND cols.column_name = tc.column_name
+LEFT JOIN (
+    SELECT
+        kcu.table_schema,
+        kcu.table_name,
+        kcu.column_name,
+        ccu.table_schema AS foreign_table_schema,
+        ccu.table_name AS foreign_table_name,
+        ccu.column_name AS foreign_column_name
+    FROM information_schema.table_constraints tc
+    JOIN information_schema.key_column_usage kcu
+        ON tc.constraint_name = kcu.constraint_name
+        AND tc.table_schema = kcu.table_schema
+        AND tc.table_name = kcu.table_name
+    JOIN information_schema.constraint_column_usage ccu
+        ON ccu.constraint_name = tc.constraint_name
+        AND ccu.table_schema = tc.table_schema
+    WHERE tc.constraint_type = 'FOREIGN KEY'
+) fk ON cols.table_schema = fk.table_schema
+     AND cols.table_name = fk.table_name
+     AND cols.column_name = fk.column_name
+LEFT JOIN (
+    SELECT
+        source_ns.nspname AS table_schema,
+        source_table.relname AS table_name,
+        string_agg(DISTINCT dep_view.relname, ', ') AS view_names
+    FROM pg_depend dep
+    JOIN pg_rewrite rw ON rw.oid = dep.objid
+    JOIN pg_class dep_view ON dep_view.oid = rw.ev_class AND dep_view.relkind = 'v'
+    JOIN pg_class source_table ON source_table.oid = dep.refobjid AND source_table.relkind = 'r'
+    JOIN pg_namespace source_ns ON source_table.relnamespace = source_ns.oid
+    GROUP BY source_ns.nspname, source_table.relname
+) dependent_views ON dependent_views.table_schema = cols.table_schema
+                 AND dependent_views.table_name = cols.table_name
+WHERE cols.table_schema NOT IN ('pg_catalog', 'information_schema', 'hdb_catalog');
+"""
+
+    try:
+        with psycopg2.connect(connection_string) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                results = cursor.fetchall()
+                df_tables_meta = pd.DataFrame(results, columns=[
+                    'Таблица',
+                    'Владелец',
+                    'Комментарий к таблице',
+                    'Столбец',
+                    'Тип данных',
+                    'Значение по умолчанию',
+                    'NOT_NULL',
+                    'Комментарий к столбцу',
+                    'Тип ограничения',
+                    'Связанная таблица',
+                    'Столбец связи'
+                ])
+                return df_tables_meta
+    except Exception as e:
+        traceback.print_exc()
+        return pd.DataFrame()
+
+df_meta = get_db_metadata(connection_string)
+
+# Выбираем название первой БД из DataFrame для примера
+if not df_meta.empty:
+    db_name = df_meta.iloc[0]['Название БД']
+    db_comment = df_meta.iloc[0]['Комментарий к БД']
+    schema_name = df_meta.iloc[0]['Название схемы']
+    schema_comment = df_meta.iloc[0]['Комментарий к схеме']
+else:
+    print("Метаданные о БД не найдены.")
+
+# Функция генерации PlantUML-кода
+def create_plantuml_ie_diagram(df_db_meta, df_tables_meta):
+    diagram = "@startuml\n\n"
+    diagram += f"header БД {db_name} {db_comment}\n"
+    diagram += f"title Схема данных {schema_name} {schema_comment}\n\n"
+    diagram += "skinparam linetype ortho\n\n"
+
+    tables = df_tables_meta.groupby('Таблица')
+    table_entities = {}
+
+    for table_name, group in tables:
+        alias = table_name.replace('.', '_').replace('-', '_')
+        table_entities[table_name] = alias
+
+        diagram += f'entity "{table_name}" as {alias} {{\n'
+
+        # Определяем первичные и внешние ключи
+        pk_cols = group[group['Тип ограничения'] == 'PRIMARY KEY']['Столбец'].tolist()
+        fk_cols = group[group['Столбец связи'].notnull()]['Столбец'].tolist()
+
+        # Сначала добавляем первичные ключи
+        for _, row in group.iterrows():
+            col_name = row['Столбец']
+            if col_name in pk_cols:
+                data_type = row['Тип данных']
+                annotations = "<<PK>>"
+                diagram += f"  {col_name} : {data_type} {annotations}\n"
+
+        # Если есть первичные ключи, добавляем разделитель
+        if pk_cols:
+            diagram += "  --\n"
+
+        # Затем добавляем остальные столбцы
+        for _, row in group.iterrows():
+            col_name = row['Столбец']
+            if col_name not in pk_cols:
+                data_type = row['Тип данных']
+                annotations = "<<FK>>" if col_name in fk_cols else ""
+                nullable_str = "" if row['NOT_NULL'] else " [Nullable]"
+                diagram += f"  {col_name} : {data_type} {annotations}{nullable_str}\n"
+
+        diagram += "}\n\n"
+
+        # Добавляем комментарий к таблице (если есть)
+        table_comment = group['Комментарий к таблице'].iloc[0]
+        if pd.notnull(table_comment):
+            diagram += f"note top of {alias}\n"
+            diagram += f"{table_comment}\n"
+            diagram += "end note\n\n"
+
+        # Добавляем комментарии к столбцам (значение по умолчанию и комментарий столбца)
+        for _, row in group.iterrows():
+            col_notes = []
+            if pd.notnull(row['Значение по умолчанию']):
+                col_notes.append(f"default: {row['Значение по умолчанию']}")
+            if pd.notnull(row['Комментарий к столбцу']):
+                col_notes.append(row['Комментарий к столбцу'])
+
+            if col_notes:
+                notes_str = "\\n".join(col_notes)
+                diagram += f"note right of {alias}::{row['Столбец']}\n"
+                diagram += f"{notes_str}\n"
+                diagram += "end note\n\n"
+
+    # Добавляем связи между таблицами
+    relationships = df_tables_meta[df_tables_meta['Связанная таблица'].notnull()]
+
+    for _, row in relationships.iterrows():
+        source_alias = table_entities[row['Таблица']]
+        target_alias = table_entities[row['Связанная таблица']]
+
+        # IE нотация: Родительская таблица || (обязательно) или |o (необязательно), дочерняя — o{ (необязательно много) или |{ (обязательно много)
+        diagram += f"{target_alias} ||..o{{ {source_alias}\n"
+
+    diagram += "@enduml"
+    return diagram
+          
+################################ ячейка 3 в  Google Colab ################################
+# Получаем метаданные по таблицам
+tables_meta_df = get_tables_metadata_db(connection_string)
+print("Метаданные таблиц")
+print(tables_meta_df)
+
+# Формируем имя выходного файла с текущими датой и временем в нужном формате
+filename_csv= 'db_metadata_' + datetime.now().strftime('%Y%m%d_%H%M%S') + '.csv'
+db_metadata_csv=tables_meta_df.to_csv(filename_csv)
+
+# Скачиваем созданный файл
+files.download(filename_csv)
+
+# Используем ранее полученный датафрейм tables_meta_df для формирования PlantUML-диаграммы
+plantuml_diagram = create_plantuml_ie_diagram(df_meta, tables_meta_df)
+
+# Формируем имя выходного файла с текущими датой и временем в нужном формате
+filename_diagram = 'er_plantuml_' + datetime.now().strftime('%Y%m%d_%H%M%S') + '.txt'
+
+# Записываем PlantUML-код в CSV-файл
+with open(filename_diagram , "w", encoding="utf-8") as file:
+    file.write(plantuml_diagram)
+
+# Скачиваем созданный файл
+files.download(filename_diagram)
