@@ -13,7 +13,7 @@ from datetime import date, datetime, timedelta #для работы с дато�
 # Строка подключения к БД
 global db_pg_connection_string
 
-connection_string = userdata.get('db_pg_connection_string') #добавить строку подключения db_pg_connection_string в секреты или явно указать здесь
+connection_string = userdata.get('db_pg_connection_string')  #добавить строку подключения db_pg_connection_string в секреты или явно указать здесь
 
 # Функция получения метаданных о текущей БД
 def get_db_metadata(connection_string):
@@ -221,7 +221,7 @@ def create_plantuml_ie_diagram(df_db_meta, df_tables_meta):
                 col_notes.append(row['Комментарий к столбцу'])
 
             if col_notes:
-                notes_str = "\\n".join(col_notes)
+                notes_str = "\n".join(col_notes)
                 diagram += f"note right of {alias}::{row['Столбец']}\n"
                 diagram += f"{notes_str}\n"
                 diagram += "end note\n\n"
